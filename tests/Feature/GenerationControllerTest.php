@@ -37,15 +37,14 @@ describe('index', function () {
                 ->where('pricing.markup_percent', 25));
     });
 
-    it('hides an expired image link when no stored copy exists', function () {
+    it('still offers the pixelforge link after its stated expiry when no stored copy exists', function () {
         $user = User::factory()->create();
-        Generation::factory()->for($user)->succeeded()->create(['image_url_expires_at' => now()->subMinute()]);
+        $generation = Generation::factory()->for($user)->succeeded()->create(['image_url_expires_at' => now()->subMinute()]);
 
         $this->actingAs($user)
             ->get(route('generations.index'))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('generations.data.0.image_src', null)
-                ->where('generations.data.0.image_expired', true));
+                ->where('generations.data.0.image_src', $generation->image_url));
     });
 });
 

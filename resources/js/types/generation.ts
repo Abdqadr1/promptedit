@@ -20,7 +20,6 @@ export type Generation = {
     charge: string | null;
     charge_exact: string | null;
     image_src: string | null;
-    image_expired: boolean;
     image_stored: boolean;
     image_url_expires_at: string | null;
     provider_id: string | null;

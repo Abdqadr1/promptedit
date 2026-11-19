@@ -33,7 +33,6 @@ class GenerationResource extends JsonResource
             'charge' => $this->charge_nanos === null ? null : Pricing::formatNanos($this->charge_nanos),
             'charge_exact' => $this->charge_nanos === null ? null : Pricing::formatNanos($this->charge_nanos, 9),
             'image_src' => $this->imageSrc(),
-            'image_expired' => $this->image_path === null && $this->image_url !== null && $this->image_url_expires_at?->isPast(),
             'image_stored' => $this->image_path !== null,
             'image_url_expires_at' => $this->image_url_expires_at?->toIso8601String(),
             'provider_id' => $this->provider_id,
@@ -49,7 +48,8 @@ class GenerationResource extends JsonResource
     }
 
     /**
-     * Prefer our stored copy; fall back to Pixelforge's signed URL while it is still valid.
+     * Prefer our stored copy; otherwise hand the browser Pixelforge's signed URL whatever its
+     * stated expiry. The page itself detects a URL that no longer loads and shows a placeholder.
      */
     private function imageSrc(): ?string
     {
@@ -57,10 +57,6 @@ class GenerationResource extends JsonResource
             return Storage::disk(config('services.pixelforge.image_disk'))->url($this->image_path);
         }
 
-        if ($this->image_url !== null && ! $this->image_url_expires_at?->isPast()) {
-            return $this->image_url;
-        }
-
-        return null;
+        return $this->image_url;
     }
 }

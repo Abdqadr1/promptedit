@@ -12,7 +12,7 @@ beforeEach(function () {
 it('copies the image to our storage so it outlives the signed url', function () {
     Storage::fake('public');
     $generation = Generation::factory()->succeeded()->create(['image_url' => 'https://cdn.example.test/image.png']);
-    Http::fake(['cdn.example.test/image.png' => Http::response('png-bytes')]);
+    Http::fake(['cdn.example.test/image.png' => Http::response('png-bytes', 200, ['Content-Type' => 'image/png'])]);
 
     (new StoreGeneratedImage($generation))->handle();
 
@@ -20,12 +20,33 @@ it('copies the image to our storage so it outlives the signed url', function () 
     expect($generation->fresh()->image_path)->toBe("generations/{$generation->id}.png");
 });
 
-it('does not try to download an image whose url has already expired', function () {
+it('still stores the image when the url works past its stated expiry', function () {
     Storage::fake('public');
-    $generation = Generation::factory()->succeeded()->create(['image_url_expires_at' => now()->subMinute()]);
+    $generation = Generation::factory()->succeeded()->create([
+        'image_url' => 'https://cdn.example.test/late.png',
+        'image_url_expires_at' => now()->subMinute(),
+    ]);
+    Http::fake(['cdn.example.test/late.png' => Http::response('png-bytes', 200, ['Content-Type' => 'image/png'])]);
 
     (new StoreGeneratedImage($generation))->handle();
 
-    Http::assertNothingSent();
-    expect($generation->fresh()->image_path)->toBeNull();
+    Storage::disk('public')->assertExists("generations/{$generation->id}.png");
 });
+
+it('gives up without retrying when the url is really gone', function (int $status) {
+    Storage::fake('public');
+    $generation = Generation::factory()->succeeded()->create(['image_url' => 'https://cdn.example.test/gone.png']);
+    Http::fake(['cdn.example.test/gone.png' => Http::response('Expired', $status)]);
+
+    (new StoreGeneratedImage($generation))->handle();
+
+    expect($generation->fresh()->image_path)->toBeNull();
+})->with([403, 404, 410]);
+
+it('fails so the queue retries when the response is not an image', function () {
+    Storage::fake('public');
+    $generation = Generation::factory()->succeeded()->create(['image_url' => 'https://cdn.example.test/odd.png']);
+    Http::fake(['cdn.example.test/odd.png' => Http::response('<html>maintenance</html>', 200, ['Content-Type' => 'text/html'])]);
+
+    (new StoreGeneratedImage($generation))->handle();
+})->throws(RuntimeException::class);
