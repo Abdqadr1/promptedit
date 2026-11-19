@@ -10,9 +10,9 @@ use App\Services\Pixelforge\PixelforgeClient;
 use App\Services\Pixelforge\Pricing;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -25,6 +25,10 @@ use Throwable;
 class ReportController extends Controller
 {
     private const int MAX_RANGE_DAYS = 92;
+
+    private const int DAYS_PER_PAGE = 10;
+
+    private const int USERS_PER_PAGE = 10;
 
     private const string AGGREGATE_COLUMNS = "sum(case when status = 'succeeded' then 1 else 0 end) as succeeded, "
         ."sum(case when status = 'failed' then 1 else 0 end) as failed, "
@@ -61,9 +65,14 @@ class ReportController extends Controller
             ->selectRaw(self::AGGREGATE_COLUMNS)
             ->groupBy('user_id')
             ->orderByDesc('charged_nanos')
-            ->get();
+            ->orderBy('user_id')
+            ->paginate(self::USERS_PER_PAGE, pageName: 'users_page')
+            ->withQueryString();
 
-        $users = User::query()->whereIn('id', $perUser->pluck('user_id'))->get(['id', 'name', 'email'])->keyBy('id');
+        $users = User::query()
+            ->whereIn('id', $perUser->getCollection()->pluck('user_id'))
+            ->get(['id', 'name', 'email'])
+            ->keyBy('id');
 
         [$providerUsage, $providerError] = $this->providerUsage($client, $start, $end);
 
@@ -82,10 +91,20 @@ class ReportController extends Controller
             ]);
         }
 
+        $daysPage = max(1, $request->integer('days_page', 1));
+
+        $paginatedDays = (new LengthAwarePaginator(
+            $days->forPage($daysPage, self::DAYS_PER_PAGE)->values(),
+            $days->count(),
+            self::DAYS_PER_PAGE,
+            $daysPage,
+            ['path' => $request->url(), 'pageName' => 'days_page'],
+        ))->withQueryString();
+
         return Inertia::render('admin/Report', [
             'filters' => ['start_date' => $start->toDateString(), 'end_date' => $end->toDateString()],
-            'days' => $days,
-            'users' => $perUser->map(fn (object $row): array => [
+            'days' => $paginatedDays,
+            'users' => $perUser->through(fn (object $row): array => [
                 'user_id' => $row->user_id,
                 'name' => $users->get($row->user_id)?->name,
                 'email' => $users->get($row->user_id)?->email,

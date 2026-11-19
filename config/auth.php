@@ -114,4 +114,20 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Demo Accounts
+    |--------------------------------------------------------------------------
+    |
+    | One-click credentials shown on the login page so reviewers can try the
+    | app as a regular user or an admin. These users are created by the
+    | DatabaseSeeder. Set DEMO_LOGINS=false to hide the buttons.
+    |
+    */
+
+    'demo_accounts' => env('DEMO_LOGINS', true) ? [
+        ['label' => 'Sample user', 'email' => 'test@example.com', 'password' => 'password'],
+        ['label' => 'Admin', 'email' => 'admin@example.com', 'password' => 'password'],
+    ] : [],
+
 ];

@@ -40,6 +40,18 @@ class GenerationController extends Controller
     }
 
     /**
+     * Show one of the user's generations. Other users' generations are reported as not found.
+     */
+    public function show(Request $request, string $generation): Response
+    {
+        $generation = $request->user()->generations()->findOrFail($generation);
+
+        return Inertia::render('generations/Show', [
+            'generation' => GenerationResource::make($generation)->resolve($request),
+        ]);
+    }
+
+    /**
      * Record a generation with its estimated price and queue it for submission to Pixelforge.
      */
     public function store(StoreGenerationRequest $request, Pricing $pricing): RedirectResponse

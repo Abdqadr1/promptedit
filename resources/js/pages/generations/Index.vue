@@ -3,6 +3,7 @@ import { Head, Link, useForm, usePoll } from '@inertiajs/vue3';
 import { ImageOff, Plus, X } from '@lucide/vue';
 import { computed, reactive, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PaginationControls from '@/components/PaginationControls.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +46,7 @@ const props = defineProps<{
 }>();
 
 const MAX_REFERENCES = 4;
+const REFERENCE_PLACEHOLDER = 'https://example.com/reference.png';
 
 const form = useForm({
     prompt: '',
@@ -68,8 +70,12 @@ const estimate = computed(() => {
     return { min: formatNanos(min), max: formatNanos(max) };
 });
 
+const canAddReference = computed(
+    () => form.reference_images.length < MAX_REFERENCES,
+);
+
 function addReference(): void {
-    if (form.reference_images.length < MAX_REFERENCES) {
+    if (canAddReference.value) {
         form.reference_images.push('');
     }
 }
@@ -101,11 +107,9 @@ const { start, stop } = usePoll(
     { autoStart: false },
 );
 
-watch(
-    hasActiveGenerations,
-    (active) => (active ? start() : stop()),
-    { immediate: true },
-);
+watch(hasActiveGenerations, (active) => (active ? start() : stop()), {
+    immediate: true,
+});
 
 const statusLabels: Record<GenerationStatus, string> = {
     pending: 'Submitting',
@@ -141,8 +145,8 @@ const brokenImages = reactive(new Set<string>());
                 <CardTitle>New image</CardTitle>
                 <CardDescription>
                     Priced per token by Pixelforge plus
-                    {{ pricing.markup_percent }}%. You only pay for images
-                    that succeed.
+                    {{ pricing.markup_percent }}%. You only pay for images that
+                    succeed.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -216,25 +220,22 @@ const brokenImages = reactive(new Set<string>());
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                :disabled="
-                                    form.reference_images.length >=
-                                    MAX_REFERENCES
-                                "
+                                :disabled="!canAddReference"
                                 @click="addReference"
                             >
                                 <Plus /> Add URL
                             </Button>
                         </div>
                         <div
-                            v-for="(url, index) in form.reference_images"
-                            :key="`ref-${index}`"
+                            v-for="(_url, index) in form.reference_images"
+                            :key="index"
                             class="grid gap-1"
                         >
                             <div class="flex gap-2">
                                 <Input
                                     v-model="form.reference_images[index]"
                                     type="url"
-                                    placeholder="https://example.com/reference.png"
+                                    :placeholder="REFERENCE_PLACEHOLDER"
                                     :aria-invalid="!!referenceError(index)"
                                 />
                                 <Button
@@ -294,156 +295,155 @@ const brokenImages = reactive(new Set<string>());
                 No generations yet. Your images will appear here.
             </p>
 
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <Card
+            <div
+                class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5"
+            >
+                <Link
                     v-for="generation in generations.data"
                     :key="generation.id"
-                    class="gap-0 overflow-hidden py-0"
+                    :href="`/generations/${generation.id}`"
+                    class="block rounded-xl transition outline-none hover:opacity-90 focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
-                    <div
-                        class="flex aspect-square items-center justify-center bg-muted"
-                    >
-                        <img
-                            v-if="
-                                generation.image_src &&
-                                !brokenImages.has(generation.id)
-                            "
-                            :src="generation.image_src"
-                            :alt="generation.prompt"
-                            class="h-full w-full object-cover"
-                            loading="lazy"
-                            @error="brokenImages.add(generation.id)"
-                        />
+                    <Card class="h-full gap-0 overflow-hidden py-0">
                         <div
-                            v-else-if="!generation.is_terminal"
-                            class="flex flex-col items-center gap-2 text-sm text-muted-foreground"
+                            class="flex aspect-square items-center justify-center bg-muted"
                         >
-                            <Spinner class="size-6" />
-                            {{ statusLabels[generation.status] }}…
-                        </div>
-                        <div
-                            v-else-if="generation.status === 'succeeded'"
-                            class="flex flex-col items-center gap-2 p-4 text-center text-sm text-muted-foreground"
-                        >
-                            <ImageOff class="size-6" />
-                            Image link expired and no stored copy is
-                            available.
-                        </div>
-                        <div
-                            v-else
-                            class="flex flex-col items-center gap-2 p-4 text-center text-sm text-muted-foreground"
-                        >
-                            <ImageOff class="size-6" />
-                            {{ generation.error_message ?? 'Generation failed' }}
-                        </div>
-                    </div>
-
-                    <div class="grid gap-3 p-4">
-                        <div class="flex items-center justify-between gap-2">
-                            <Badge :variant="statusVariant(generation.status)">
-                                <Spinner
-                                    v-if="!generation.is_terminal"
-                                    class="size-3"
-                                />
-                                {{ statusLabels[generation.status] }}
-                            </Badge>
-                            <span class="text-xs text-muted-foreground">
-                                {{ generation.size }} ·
-                                <span class="capitalize">{{
-                                    generation.quality
-                                }}</span>
-                                <template
-                                    v-if="generation.reference_images.length"
-                                >
-                                    ·
-                                    {{ generation.reference_images.length }}
-                                    ref
-                                </template>
-                            </span>
-                        </div>
-
-                        <p
-                            class="line-clamp-2 text-sm"
-                            :title="generation.prompt"
-                        >
-                            {{ generation.prompt }}
-                        </p>
-
-                        <dl class="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                                <dt class="text-muted-foreground">Estimated</dt>
-                                <dd class="tabular-nums">
-                                    {{ generation.estimated_min_charge }} –
-                                    {{ generation.estimated_max_charge }}
-                                </dd>
+                            <img
+                                v-if="
+                                    generation.image_src &&
+                                    !brokenImages.has(generation.id)
+                                "
+                                :src="generation.image_src"
+                                :alt="generation.prompt"
+                                class="h-full w-full object-cover"
+                                loading="lazy"
+                                @error="brokenImages.add(generation.id)"
+                            />
+                            <div
+                                v-else-if="!generation.is_terminal"
+                                class="flex flex-col items-center gap-2 text-xs text-muted-foreground"
+                            >
+                                <Spinner class="size-5" />
+                                {{ statusLabels[generation.status] }}…
                             </div>
-                            <div>
-                                <dt class="text-muted-foreground">Charged</dt>
-                                <dd
-                                    class="font-medium tabular-nums"
-                                    :title="generation.charge_exact ?? undefined"
+                            <div
+                                v-else-if="generation.status === 'succeeded'"
+                                class="flex flex-col items-center gap-2 p-3 text-center text-xs text-muted-foreground"
+                            >
+                                <ImageOff class="size-5" />
+                                Image link expired and no stored copy is
+                                available.
+                            </div>
+                            <div
+                                v-else
+                                class="flex flex-col items-center gap-2 p-3 text-center text-xs text-muted-foreground"
+                            >
+                                <ImageOff class="size-5" />
+                                {{
+                                    generation.error_message ??
+                                    'Generation failed'
+                                }}
+                            </div>
+                        </div>
+
+                        <div class="grid gap-2 p-3">
+                            <div
+                                class="flex flex-wrap items-center justify-between gap-1"
+                            >
+                                <Badge
+                                    :variant="statusVariant(generation.status)"
                                 >
-                                    <template v-if="generation.charge !== null">
-                                        {{ generation.charge }}
-                                    </template>
-                                    <span
-                                        v-else
-                                        class="text-muted-foreground"
+                                    <Spinner
+                                        v-if="!generation.is_terminal"
+                                        class="size-3"
+                                    />
+                                    {{ statusLabels[generation.status] }}
+                                </Badge>
+                                <span class="text-xs text-muted-foreground">
+                                    {{ generation.size }} ·
+                                    <span class="capitalize">{{
+                                        generation.quality
+                                    }}</span>
+                                    <template
+                                        v-if="
+                                            generation.reference_images.length
+                                        "
                                     >
-                                        Pending
-                                    </span>
-                                </dd>
+                                        ·
+                                        {{ generation.reference_images.length }}
+                                        ref
+                                    </template>
+                                </span>
                             </div>
-                        </dl>
 
-                        <p
-                            v-if="
-                                generation.status === 'failed' &&
-                                generation.error_code
-                            "
-                            class="text-xs text-destructive"
-                        >
-                            {{ generation.error_code }} — not charged
-                        </p>
+                            <p
+                                class="line-clamp-1 text-xs"
+                                :title="generation.prompt"
+                            >
+                                {{ generation.prompt }}
+                            </p>
 
-                        <p class="text-xs text-muted-foreground">
-                            {{ formatDate(generation.created_at) }}
-                        </p>
-                    </div>
-                </Card>
+                            <dl class="grid grid-cols-2 gap-1 text-xs">
+                                <div>
+                                    <dt class="text-muted-foreground">
+                                        Estimated
+                                    </dt>
+                                    <dd class="tabular-nums">
+                                        {{ generation.estimated_min_charge }} –
+                                        {{ generation.estimated_max_charge }}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-muted-foreground">
+                                        Charged
+                                    </dt>
+                                    <dd
+                                        class="font-medium tabular-nums"
+                                        :title="
+                                            generation.charge_exact ?? undefined
+                                        "
+                                    >
+                                        <template
+                                            v-if="generation.charge !== null"
+                                        >
+                                            {{ generation.charge }}
+                                        </template>
+                                        <span
+                                            v-else
+                                            class="text-muted-foreground"
+                                        >
+                                            Pending
+                                        </span>
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            <p
+                                v-if="
+                                    generation.status === 'failed' &&
+                                    generation.error_code
+                                "
+                                class="text-xs text-destructive"
+                            >
+                                {{ generation.error_code }} — not charged
+                            </p>
+
+                            <p class="text-xs text-muted-foreground">
+                                {{ formatDate(generation.created_at) }}
+                            </p>
+                        </div>
+                    </Card>
+                </Link>
             </div>
 
-            <div
-                v-if="generations.meta.last_page > 1"
-                class="flex items-center justify-between"
-            >
-                <Button
-                    v-if="generations.links.prev"
-                    variant="outline"
-                    size="sm"
-                    as-child
-                >
-                    <Link :href="generations.links.prev" preserve-scroll>
-                        Newer
-                    </Link>
-                </Button>
-                <span v-else />
-                <span class="text-sm text-muted-foreground">
-                    Page {{ generations.meta.current_page }} of
-                    {{ generations.meta.last_page }}
-                </span>
-                <Button
-                    v-if="generations.links.next"
-                    variant="outline"
-                    size="sm"
-                    as-child
-                >
-                    <Link :href="generations.links.next" preserve-scroll>
-                        Older
-                    </Link>
-                </Button>
-                <span v-else />
-            </div>
+            <PaginationControls
+                :prev-url="generations.links.prev"
+                :next-url="generations.links.next"
+                :current-page="generations.meta.current_page"
+                :last-page="generations.meta.last_page"
+                prev-label="Newer"
+                next-label="Older"
+            />
         </section>
     </div>
 </template>

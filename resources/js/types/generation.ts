@@ -21,7 +21,14 @@ export type Generation = {
     charge_exact: string | null;
     image_src: string | null;
     image_expired: boolean;
+    image_stored: boolean;
+    image_url_expires_at: string | null;
+    provider_id: string | null;
+    usage: Record<string, number> | null;
+    /** Only present for admins. */
+    provider_cost?: string;
     created_at: string;
+    submitted_at: string | null;
     completed_at: string | null;
 };
 

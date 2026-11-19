@@ -2,11 +2,29 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
+use Inertia\Testing\AssertableInertia as Assert;
 
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
 
     $response->assertOk();
+});
+
+test('login screen offers the configured demo accounts', function () {
+    config(['auth.demo_accounts' => [
+        ['label' => 'Admin', 'email' => 'admin@example.com', 'password' => 'password'],
+    ]]);
+
+    $this->get(route('login'))->assertInertia(fn (Assert $page) => $page
+        ->component('auth/Login')
+        ->where('demoAccounts.0.email', 'admin@example.com'));
+});
+
+test('login screen offers no demo accounts when they are disabled', function () {
+    config(['auth.demo_accounts' => []]);
+
+    $this->get(route('login'))->assertInertia(fn (Assert $page) => $page
+        ->where('demoAccounts', []));
 });
 
 test('users can authenticate using the login screen', function () {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -19,10 +20,31 @@ defineOptions({
     },
 });
 
-defineProps<{
-    status?: string;
-    canResetPassword: boolean;
-}>();
+type DemoAccount = {
+    label: string;
+    email: string;
+    password: string;
+};
+
+withDefaults(
+    defineProps<{
+        status?: string;
+        canResetPassword: boolean;
+        demoAccounts?: DemoAccount[];
+    }>(),
+    { demoAccounts: () => [] },
+);
+
+const email = ref('');
+const password = ref('');
+
+function fillDemoAccount(account: DemoAccount): void {
+    email.value = account.email;
+    password.value = account.password;
+    document
+        .querySelector<HTMLButtonElement>('[data-test="login-button"]')
+        ?.focus();
+}
 </script>
 
 <template>
@@ -46,6 +68,7 @@ defineProps<{
                 <Label for="email">Email address</Label>
                 <Input
                     id="email"
+                    v-model="email"
                     type="email"
                     name="email"
                     required
@@ -71,6 +94,7 @@ defineProps<{
                 </div>
                 <PasswordInput
                     id="password"
+                    v-model="password"
                     name="password"
                     required
                     :tabindex="2"
@@ -97,6 +121,25 @@ defineProps<{
                 <Spinner v-if="processing" />
                 Log in
             </Button>
+        </div>
+
+        <div v-if="demoAccounts.length" class="grid gap-2">
+            <p class="text-center text-xs text-muted-foreground">
+                Try a demo account
+            </p>
+            <div class="grid grid-cols-2 gap-2">
+                <Button
+                    v-for="account in demoAccounts"
+                    :key="account.email"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    :data-test="`demo-login-${account.email}`"
+                    @click="fillDemoAccount(account)"
+                >
+                    {{ account.label }}
+                </Button>
+            </div>
         </div>
 
         <div class="text-center text-sm text-muted-foreground">

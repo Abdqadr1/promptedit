@@ -42,7 +42,7 @@ export function estimateCharge(
 ): { min: number; max: number } {
     const { tokens, rates, markup_percent: markup } = catalog;
     const baseText = Math.ceil(
-        [...prompt].length / tokens.characters_per_text_token,
+        Array.from(prompt).length / tokens.characters_per_text_token,
     );
     const variance = Math.round(tokens.text_token_variance * 10_000);
     const exact = {

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { CircleAlert, CircleCheck } from '@lucide/vue';
+import { CircleX, CircleCheck } from '@lucide/vue';
 import { reactive } from 'vue';
+import PaginationControls from '@/components/PaginationControls.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
@@ -39,10 +41,19 @@ type UserRow = Totals & {
     email: string | null;
 };
 
+type Paginator<T> = {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    prev_page_url: string | null;
+    next_page_url: string | null;
+};
+
 const props = defineProps<{
     filters: { start_date: string; end_date: string };
-    days: DayRow[];
-    users: UserRow[];
+    days: Paginator<DayRow>;
+    users: Paginator<UserRow>;
     totals: Totals;
     provider_error: string | null;
 }>();
@@ -79,8 +90,7 @@ function applyFilters(): void {
             </div>
             <Button type="submit">Apply</Button>
             <p class="text-xs text-muted-foreground">
-                Up to 92 days. Generations count on the UTC day they
-                completed.
+                Up to 92 days. Generations count on the UTC day they completed.
             </p>
         </form>
 
@@ -123,8 +133,8 @@ function applyFilters(): void {
             <CardHeader>
                 <CardTitle>Daily</CardTitle>
                 <CardDescription>
-                    Provider cost is checked against Pixelforge's
-                    <code>GET /v1/usage</code>.
+                    {{ days.total }} days. Provider cost is checked against
+                    Pixelforge's <code>GET /v1/usage</code>.
                     <span v-if="provider_error" class="text-destructive">
                         {{ provider_error }}
                     </span>
@@ -155,7 +165,7 @@ function applyFilters(): void {
                     </thead>
                     <tbody class="tabular-nums">
                         <tr
-                            v-for="day in days"
+                            v-for="day in days.data"
                             :key="day.date"
                             class="border-b last:border-0"
                         >
@@ -192,7 +202,7 @@ function applyFilters(): void {
                                         v-if="day.matches_provider"
                                         class="size-3.5 text-green-600"
                                     />
-                                    <CircleAlert v-else class="size-3.5" />
+                                    <CircleX v-else class="size-3.5" />
                                 </span>
                                 <span v-else class="text-muted-foreground">
                                     —
@@ -203,15 +213,28 @@ function applyFilters(): void {
                     </tbody>
                 </table>
             </CardContent>
+            <CardFooter>
+                <PaginationControls
+                    class="w-full"
+                    :prev-url="days.prev_page_url"
+                    :next-url="days.next_page_url"
+                    :current-page="days.current_page"
+                    :last-page="days.last_page"
+                    :only="['days']"
+                />
+            </CardFooter>
         </Card>
 
         <Card>
             <CardHeader>
                 <CardTitle>Per user</CardTitle>
+                <CardDescription>
+                    {{ users.total }} users with completed generations.
+                </CardDescription>
             </CardHeader>
             <CardContent class="overflow-x-auto">
                 <p
-                    v-if="users.length === 0"
+                    v-if="users.total === 0"
                     class="text-sm text-muted-foreground"
                 >
                     No completed generations in this range.
@@ -237,7 +260,7 @@ function applyFilters(): void {
                     </thead>
                     <tbody class="tabular-nums">
                         <tr
-                            v-for="user in users"
+                            v-for="user in users.data"
                             :key="user.user_id"
                             class="border-b last:border-0"
                         >
@@ -264,6 +287,16 @@ function applyFilters(): void {
                     </tbody>
                 </table>
             </CardContent>
+            <CardFooter>
+                <PaginationControls
+                    class="w-full"
+                    :prev-url="users.prev_page_url"
+                    :next-url="users.next_page_url"
+                    :current-page="users.current_page"
+                    :last-page="users.last_page"
+                    :only="['users']"
+                />
+            </CardFooter>
         </Card>
     </div>
 </template>

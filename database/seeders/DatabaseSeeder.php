@@ -12,19 +12,27 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     *
+     * Safe to run repeatedly: demo users are matched by email and reset to their known state.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->seedDemoUser('Test User', 'test@example.com', isAdmin: false);
+        $this->seedDemoUser('Admin User', 'admin@example.com', isAdmin: true);
+    }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
-        User::factory()->admin()->create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-        ]);
+    /**
+     * Create or reset a demo user. These match the login page's demo buttons (config/auth.php).
+     */
+    private function seedDemoUser(string $name, string $email, bool $isAdmin): void
+    {
+        User::query()->firstOrNew(['email' => $email])
+            ->forceFill([
+                'name' => $name,
+                'password' => 'password',
+                'email_verified_at' => now(),
+                'is_admin' => $isAdmin,
+            ])
+            ->save();
     }
 }

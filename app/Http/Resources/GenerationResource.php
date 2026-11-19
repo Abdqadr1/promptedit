@@ -34,7 +34,16 @@ class GenerationResource extends JsonResource
             'charge_exact' => $this->charge_nanos === null ? null : Pricing::formatNanos($this->charge_nanos, 9),
             'image_src' => $this->imageSrc(),
             'image_expired' => $this->image_path === null && $this->image_url !== null && $this->image_url_expires_at?->isPast(),
+            'image_stored' => $this->image_path !== null,
+            'image_url_expires_at' => $this->image_url_expires_at?->toIso8601String(),
+            'provider_id' => $this->provider_id,
+            'usage' => $this->usage,
+            'provider_cost' => $this->when(
+                (bool) $request->user()?->is_admin && $this->provider_cost_nanos !== null,
+                fn (): string => Pricing::formatNanos((int) $this->provider_cost_nanos, 9),
+            ),
             'created_at' => $this->created_at?->toIso8601String(),
+            'submitted_at' => $this->submitted_at?->toIso8601String(),
             'completed_at' => $this->completed_at?->toIso8601String(),
         ];
     }

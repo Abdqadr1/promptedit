@@ -7,6 +7,7 @@ use App\Services\Pixelforge\PixelforgeClient;
 use App\Services\Pixelforge\Pricing;
 use App\Services\Pixelforge\WebhookSignature;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
@@ -45,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
         $this->configurePixelforge();
 
         Gate::define('viewAdminReport', fn (User $user): bool => $user->is_admin);
+
+        DevCommands::artisan('schedule:work', 'scheduler');
     }
 
     /**
