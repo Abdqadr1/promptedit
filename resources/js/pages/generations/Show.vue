@@ -29,7 +29,7 @@ setLayoutProps({
 const { copy, copied } = useClipboard({ legacy: true });
 
 const { start, stop } = usePoll(
-    3000,
+    5000,
     { only: ['generation'] },
     { autoStart: false },
 );

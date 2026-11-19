@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('status')->index();
             $table->string('error_code')->nullable();
             $table->text('error_message')->nullable();
+            $table->unsignedSmallInteger('transient_failures')->default(0);
             $table->unsignedBigInteger('estimated_min_charge_nanos');
             $table->unsignedBigInteger('estimated_max_charge_nanos');
             $table->unsignedBigInteger('provider_cost_nanos')->nullable();

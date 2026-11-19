@@ -102,7 +102,7 @@ const hasActiveGenerations = computed(() =>
 );
 
 const { start, stop } = usePoll(
-    3000,
+    5000,
     { only: ['generations'] },
     { autoStart: false },
 );
@@ -137,6 +137,7 @@ const brokenImages = reactive(new Set<string>());
 </script>
 
 <template>
+
     <Head title="Generate" />
 
     <div class="flex h-full flex-1 flex-col gap-6 p-4">
@@ -153,17 +154,10 @@ const brokenImages = reactive(new Set<string>());
                 <form class="grid gap-5" @submit.prevent="submit">
                     <div class="grid gap-2">
                         <Label for="prompt">Prompt</Label>
-                        <Textarea
-                            id="prompt"
-                            v-model="form.prompt"
-                            maxlength="4000"
-                            rows="3"
+                        <Textarea id="prompt" v-model="form.prompt" maxlength="4000" rows="3"
                             placeholder="A lighthouse on a cliff at dusk, oil painting"
-                            :aria-invalid="!!form.errors.prompt"
-                        />
-                        <div
-                            class="flex justify-between text-xs text-muted-foreground"
-                        >
+                            :aria-invalid="!!form.errors.prompt" />
+                        <div class="flex justify-between text-xs text-muted-foreground">
                             <span>
                                 Test keywords: [fail], [slow], [duplicate],
                                 [succeed], [blocked], [overloaded]
@@ -181,11 +175,7 @@ const brokenImages = reactive(new Set<string>());
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem
-                                        v-for="size in sizes"
-                                        :key="size"
-                                        :value="size"
-                                    >
+                                    <SelectItem v-for="size in sizes" :key="size" :value="size">
                                         {{ size }}
                                     </SelectItem>
                                 </SelectContent>
@@ -199,12 +189,8 @@ const brokenImages = reactive(new Set<string>());
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem
-                                        v-for="quality in qualities"
-                                        :key="quality"
-                                        :value="quality"
-                                        class="capitalize"
-                                    >
+                                    <SelectItem v-for="quality in qualities" :key="quality" :value="quality"
+                                        class="capitalize">
                                         {{ quality }}
                                     </SelectItem>
                                 </SelectContent>
@@ -216,35 +202,17 @@ const brokenImages = reactive(new Set<string>());
                     <div class="grid gap-2">
                         <div class="flex items-center justify-between">
                             <Label>Reference images (optional)</Label>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                :disabled="!canAddReference"
-                                @click="addReference"
-                            >
+                            <Button type="button" variant="ghost" size="sm" :disabled="!canAddReference"
+                                @click="addReference">
                                 <Plus /> Add URL
                             </Button>
                         </div>
-                        <div
-                            v-for="(_url, index) in form.reference_images"
-                            :key="index"
-                            class="grid gap-1"
-                        >
+                        <div v-for="(_url, index) in form.reference_images" :key="index" class="grid gap-1">
                             <div class="flex gap-2">
-                                <Input
-                                    v-model="form.reference_images[index]"
-                                    type="url"
-                                    :placeholder="REFERENCE_PLACEHOLDER"
-                                    :aria-invalid="!!referenceError(index)"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    :aria-label="`Remove reference ${index + 1}`"
-                                    @click="removeReference(index)"
-                                >
+                                <Input v-model="form.reference_images[index]" type="url"
+                                    :placeholder="REFERENCE_PLACEHOLDER" :aria-invalid="!!referenceError(index)" />
+                                <Button type="button" variant="ghost" size="icon"
+                                    :aria-label="`Remove reference ${index + 1}`" @click="removeReference(index)">
                                     <X />
                                 </Button>
                             </div>
@@ -254,8 +222,7 @@ const brokenImages = reactive(new Set<string>());
                     </div>
 
                     <div
-                        class="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
+                        class="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <div class="text-sm text-muted-foreground">
                                 Estimated cost
@@ -268,10 +235,7 @@ const brokenImages = reactive(new Set<string>());
                                 Failed generations are free.
                             </div>
                         </div>
-                        <Button
-                            type="submit"
-                            :disabled="form.processing || !form.prompt.trim()"
-                        >
+                        <Button type="submit" :disabled="form.processing || !form.prompt.trim()">
                             <Spinner v-if="form.processing" />
                             Generate
                         </Button>
@@ -288,56 +252,36 @@ const brokenImages = reactive(new Set<string>());
                 </span>
             </div>
 
-            <p
-                v-if="generations.data.length === 0"
-                class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground"
-            >
+            <p v-if="generations.data.length === 0"
+                class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
                 No generations yet. Your images will appear here.
             </p>
 
-            <div
-                class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5"
-            >
-                <Link
-                    v-for="generation in generations.data"
-                    :key="generation.id"
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                <Link v-for="generation in generations.data" :key="generation.id"
                     :href="`/generations/${generation.id}`"
-                    class="block rounded-xl transition outline-none hover:opacity-90 focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                >
+                    class="block rounded-xl transition outline-none hover:opacity-90 focus-visible:ring-[3px] focus-visible:ring-ring/50">
                     <Card class="h-full gap-0 overflow-hidden py-0">
-                        <div
-                            class="flex aspect-square items-center justify-center bg-muted"
-                        >
-                            <img
-                                v-if="
-                                    generation.image_src &&
-                                    !brokenImages.has(generation.id)
-                                "
-                                :src="generation.image_src"
-                                :alt="generation.prompt"
-                                class="h-full w-full object-cover"
-                                loading="lazy"
-                                @error="brokenImages.add(generation.id)"
-                            />
-                            <div
-                                v-else-if="!generation.is_terminal"
-                                class="flex flex-col items-center gap-2 text-xs text-muted-foreground"
-                            >
+                        <div class="flex aspect-square items-center justify-center bg-muted">
+                            <img v-if="
+                                generation.image_src &&
+                                !brokenImages.has(generation.id)
+                            " :src="generation.image_src" :alt="generation.prompt"
+                                class="h-full w-full object-cover" loading="lazy"
+                                @error="brokenImages.add(generation.id)" />
+                            <div v-else-if="!generation.is_terminal"
+                                class="flex flex-col items-center gap-2 text-xs text-muted-foreground">
                                 <Spinner class="size-5" />
                                 {{ statusLabels[generation.status] }}…
                             </div>
-                            <div
-                                v-else-if="generation.status === 'succeeded'"
-                                class="flex flex-col items-center gap-2 p-3 text-center text-xs text-muted-foreground"
-                            >
+                            <div v-else-if="generation.status === 'succeeded'"
+                                class="flex flex-col items-center gap-2 p-3 text-center text-xs text-muted-foreground">
                                 <ImageOff class="size-5" />
                                 Image link expired and no stored copy is
                                 available.
                             </div>
-                            <div
-                                v-else
-                                class="flex flex-col items-center gap-2 p-3 text-center text-xs text-muted-foreground"
-                            >
+                            <div v-else
+                                class="flex flex-col items-center gap-2 p-3 text-center text-xs text-muted-foreground">
                                 <ImageOff class="size-5" />
                                 {{
                                     generation.error_message ??
@@ -347,28 +291,19 @@ const brokenImages = reactive(new Set<string>());
                         </div>
 
                         <div class="grid gap-2 p-3">
-                            <div
-                                class="flex flex-wrap items-center justify-between gap-1"
-                            >
-                                <Badge
-                                    :variant="statusVariant(generation.status)"
-                                >
-                                    <Spinner
-                                        v-if="!generation.is_terminal"
-                                        class="size-3"
-                                    />
+                            <div class="flex flex-wrap items-center justify-between gap-1">
+                                <Badge :variant="statusVariant(generation.status)">
+                                    <Spinner v-if="!generation.is_terminal" class="size-3" />
                                     {{ statusLabels[generation.status] }}
                                 </Badge>
                                 <span class="text-xs text-muted-foreground">
                                     {{ generation.size }} ·
                                     <span class="capitalize">{{
                                         generation.quality
-                                    }}</span>
-                                    <template
-                                        v-if="
-                                            generation.reference_images.length
-                                        "
-                                    >
+                                        }}</span>
+                                    <template v-if="
+                                        generation.reference_images.length
+                                    ">
                                         ·
                                         {{ generation.reference_images.length }}
                                         ref
@@ -376,10 +311,7 @@ const brokenImages = reactive(new Set<string>());
                                 </span>
                             </div>
 
-                            <p
-                                class="line-clamp-1 text-xs"
-                                :title="generation.prompt"
-                            >
+                            <p class="line-clamp-1 text-xs" :title="generation.prompt">
                                 {{ generation.prompt }}
                             </p>
 
@@ -397,34 +329,22 @@ const brokenImages = reactive(new Set<string>());
                                     <dt class="text-muted-foreground">
                                         Charged
                                     </dt>
-                                    <dd
-                                        class="font-medium tabular-nums"
-                                        :title="
-                                            generation.charge_exact ?? undefined
-                                        "
-                                    >
-                                        <template
-                                            v-if="generation.charge !== null"
-                                        >
+                                    <dd class="font-medium tabular-nums" :title="generation.charge_exact ?? undefined
+                                        ">
+                                        <template v-if="generation.charge !== null">
                                             {{ generation.charge }}
                                         </template>
-                                        <span
-                                            v-else
-                                            class="text-muted-foreground"
-                                        >
+                                        <span v-else class="text-muted-foreground">
                                             Pending
                                         </span>
                                     </dd>
                                 </div>
                             </dl>
 
-                            <p
-                                v-if="
-                                    generation.status === 'failed' &&
-                                    generation.error_code
-                                "
-                                class="text-xs text-destructive"
-                            >
+                            <p v-if="
+                                generation.status === 'failed' &&
+                                generation.error_code
+                            " class="text-xs text-destructive">
                                 {{ generation.error_code }} — not charged
                             </p>
 
@@ -436,14 +356,9 @@ const brokenImages = reactive(new Set<string>());
                 </Link>
             </div>
 
-            <PaginationControls
-                :prev-url="generations.links.prev"
-                :next-url="generations.links.next"
-                :current-page="generations.meta.current_page"
-                :last-page="generations.meta.last_page"
-                prev-label="Newer"
-                next-label="Older"
-            />
+            <PaginationControls :prev-url="generations.links.prev" :next-url="generations.links.next"
+                :current-page="generations.meta.current_page" :last-page="generations.meta.last_page" prev-label="Newer"
+                next-label="Older" />
         </section>
     </div>
 </template>

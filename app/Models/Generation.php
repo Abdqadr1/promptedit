@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property GenerationStatus $status
  * @property string|null $error_code
  * @property string|null $error_message
+ * @property int $transient_failures
  * @property int $estimated_min_charge_nanos
  * @property int $estimated_max_charge_nanos
  * @property int|null $provider_cost_nanos
@@ -43,7 +44,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'user_id', 'provider_id', 'prompt', 'size', 'quality', 'reference_images', 'status',
-    'error_code', 'error_message', 'estimated_min_charge_nanos', 'estimated_max_charge_nanos',
+    'error_code', 'error_message', 'transient_failures', 'estimated_min_charge_nanos', 'estimated_max_charge_nanos',
     'provider_cost_nanos', 'charge_nanos', 'usage', 'rates', 'image_url', 'image_url_expires_at',
     'image_path', 'submitted_at', 'completed_at', 'last_synced_at',
 ])]
@@ -68,6 +69,7 @@ class Generation extends Model
             'estimated_max_charge_nanos' => 'integer',
             'provider_cost_nanos' => 'integer',
             'charge_nanos' => 'integer',
+            'transient_failures' => 'integer',
             'image_url_expires_at' => 'datetime',
             'submitted_at' => 'datetime',
             'completed_at' => 'datetime',
