@@ -41,7 +41,8 @@ return [
         'webhook_secret' => env('PIXELFORGE_WEBHOOK_SECRET'),
         'webhook_tolerance' => (int) env('PIXELFORGE_WEBHOOK_TOLERANCE', 300),
         'markup_percent' => 25,
-        'image_disk' => env('PIXELFORGE_IMAGE_DISK', 'public'),
+        // Private by default: images are only served to their owner via generations.image.
+        'image_disk' => env('PIXELFORGE_IMAGE_DISK', 'local'),
 
         /*
          * Used only when GET /v1/pricing is unreachable. Mirrors the published price sheet.

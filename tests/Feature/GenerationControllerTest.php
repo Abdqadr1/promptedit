@@ -6,6 +6,7 @@ use App\Models\Generation;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -89,6 +90,55 @@ describe('show', function () {
         $this->actingAs(User::factory()->create())
             ->get(route('generations.show', $generation))
             ->assertNotFound();
+    });
+});
+
+describe('image', function () {
+    it('streams the stored image privately to its owner', function () {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $generation = Generation::factory()->for($user)->succeeded()->create(['image_path' => 'generations/owned.png']);
+        Storage::disk('local')->put('generations/owned.png', 'png-bytes');
+
+        $response = $this->actingAs($user)->get(route('generations.image', $generation));
+
+        $response->assertOk()->assertHeader('Content-Type', 'image/png');
+        expect($response->streamedContent())->toBe('png-bytes')
+            ->and($response->headers->get('Cache-Control'))->toContain('private');
+    });
+
+    it('points the page at the private image route once a copy is stored', function () {
+        $user = User::factory()->create();
+        $generation = Generation::factory()->for($user)->succeeded()->create(['image_path' => 'generations/owned.png']);
+
+        $this->actingAs($user)
+            ->get(route('generations.show', $generation))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('generation.image_src', route('generations.image', $generation, absolute: false)));
+    });
+
+    it('returns 404 for another user\'s image', function () {
+        Storage::fake('local');
+        $generation = Generation::factory()->succeeded()->create(['image_path' => 'generations/other.png']);
+        Storage::disk('local')->put('generations/other.png', 'png-bytes');
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('generations.image', $generation))
+            ->assertNotFound();
+    });
+
+    it('returns 404 when no copy has been stored', function () {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $generation = Generation::factory()->for($user)->succeeded()->create();
+
+        $this->actingAs($user)->get(route('generations.image', $generation))->assertNotFound();
+    });
+
+    it('redirects guests to the login page', function () {
+        $generation = Generation::factory()->succeeded()->create(['image_path' => 'generations/x.png']);
+
+        $this->get(route('generations.image', $generation))->assertRedirect(route('login'));
     });
 });
 

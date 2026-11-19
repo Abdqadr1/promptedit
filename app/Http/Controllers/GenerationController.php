@@ -12,8 +12,10 @@ use App\Models\Generation;
 use App\Services\Pixelforge\Pricing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GenerationController extends Controller
 {
@@ -48,6 +50,22 @@ class GenerationController extends Controller
 
         return Inertia::render('generations/Show', [
             'generation' => GenerationResource::make($generation)->resolve($request),
+        ]);
+    }
+
+    /**
+     * Stream the stored copy of one of the user's images from the private disk.
+     */
+    public function image(Request $request, string $generation): StreamedResponse
+    {
+        $generation = $request->user()->generations()->findOrFail($generation);
+        $disk = Storage::disk(config('services.pixelforge.image_disk'));
+
+        abort_if($generation->image_path === null || ! $disk->exists($generation->image_path), 404);
+
+        return $disk->response($generation->image_path, "{$generation->id}.png", [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'private, max-age=86400, immutable',
         ]);
     }
 

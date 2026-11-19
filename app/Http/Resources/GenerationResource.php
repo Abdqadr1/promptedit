@@ -6,7 +6,6 @@ use App\Models\Generation;
 use App\Services\Pixelforge\Pricing;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * @mixin Generation
@@ -48,13 +47,13 @@ class GenerationResource extends JsonResource
     }
 
     /**
-     * Prefer our stored copy; otherwise hand the browser Pixelforge's signed URL whatever its
+     * Prefer our stored copy (served privately to its owner); otherwise hand the browser Pixelforge's signed URL whatever its
      * stated expiry. The page itself detects a URL that no longer loads and shows a placeholder.
      */
     private function imageSrc(): ?string
     {
         if ($this->image_path !== null) {
-            return Storage::disk(config('services.pixelforge.image_disk'))->url($this->image_path);
+            return route('generations.image', $this->id, absolute: false);
         }
 
         return $this->image_url;

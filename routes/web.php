@@ -17,6 +17,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:20,1')
         ->name('generations.store');
     Route::get('generations/{generation}', [GenerationController::class, 'show'])->name('generations.show');
+    Route::get('generations/{generation}/image', [GenerationController::class, 'image'])->name('generations.image');
 
     Route::get('admin/report', ReportController::class)
         ->middleware('can:viewAdminReport')
