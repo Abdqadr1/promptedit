@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,6 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        // Safety net for lost or delayed Pixelforge webhooks.
+        $schedule->command('generations:reconcile')->everyMinute()->withoutOverlapping();
+
+        // Keep the admin report's copy of Pixelforge's per-day usage current. One request
+        // covers the last 3 days, so this costs ~6 calls an hour.
+        $schedule->command('pixelforge:sync-usage')->everyTenMinutes()->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { CircleX, CircleCheck } from '@lucide/vue';
-import { reactive } from 'vue';
+import { CircleX, CircleCheck, Clock, RefreshCw } from '@lucide/vue';
+import { reactive, ref } from 'vue';
 import PaginationControls from '@/components/PaginationControls.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +32,8 @@ type Totals = {
 type DayRow = Totals & {
     date: string;
     provider_reported_cost: string | null;
+    provider_synced_at: string | null;
+    provider_stale: boolean;
     matches_provider: boolean | null;
 };
 
@@ -50,13 +52,22 @@ type Paginator<T> = {
     next_page_url: string | null;
 };
 
+type ReportTotals = Totals & {
+    provider_reported_cost: string;
+    matches_provider: boolean | null;
+    unsynced_days: number;
+    stale_days: number;
+};
+
 const props = defineProps<{
     filters: { start_date: string; end_date: string };
     days: Paginator<DayRow>;
     users: Paginator<UserRow>;
-    totals: Totals;
-    provider_error: string | null;
+    totals: ReportTotals;
 }>();
+
+const today = new Date().toISOString().slice(0, 10);
+const syncing = ref(false);
 
 const filters = reactive({ ...props.filters });
 
@@ -64,6 +75,23 @@ function applyFilters(): void {
     router.get('/admin/report', filters, {
         preserveScroll: true,
         preserveState: true,
+    });
+}
+
+function formatTime(value: string | null): string {
+    return value
+        ? new Date(value).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+          })
+        : '';
+}
+
+function syncFromPixelforge(): void {
+    router.post('/admin/report/sync', props.filters, {
+        preserveScroll: true,
+        onStart: () => (syncing.value = true),
+        onFinish: () => (syncing.value = false),
     });
 }
 </script>
@@ -82,19 +110,54 @@ function applyFilters(): void {
                     id="start_date"
                     v-model="filters.start_date"
                     type="date"
+                    :max="today"
                 />
             </div>
             <div class="grid gap-2">
                 <Label for="end_date">To (UTC)</Label>
-                <Input id="end_date" v-model="filters.end_date" type="date" />
+                <Input
+                    id="end_date"
+                    v-model="filters.end_date"
+                    type="date"
+                    :max="today"
+                />
             </div>
             <Button type="submit">Apply</Button>
             <p class="text-xs text-muted-foreground">
-                Up to 92 days. Generations count on the UTC day they completed.
+                Any range. Generations count on the UTC day they completed.
             </p>
         </form>
 
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+            v-if="totals.unsynced_days > 0 || totals.stale_days > 0"
+            class="flex flex-col gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+        >
+            <p>
+                <template v-if="totals.unsynced_days > 0">
+                    {{ totals.unsynced_days }}
+                    {{ totals.unsynced_days === 1 ? 'day' : 'days' }} in this
+                    range haven't been synced from Pixelforge yet.
+                </template>
+                <template v-if="totals.stale_days > 0">
+                    {{ totals.stale_days }}
+                    {{ totals.stale_days === 1 ? 'day has' : 'days have' }}
+                    generations that finished after the last sync.
+                </template>
+                Those days are not checked against Pixelforge until the next
+                sync (every 10 minutes).
+            </p>
+            <Button
+                variant="outline"
+                size="sm"
+                :disabled="syncing"
+                @click="syncFromPixelforge"
+            >
+                <RefreshCw :class="{ 'animate-spin': syncing }" />
+                Sync from Pixelforge
+            </Button>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Card>
                 <CardHeader>
                     <CardDescription>Credits spent</CardDescription>
@@ -108,6 +171,28 @@ function applyFilters(): void {
                     <CardDescription>Provider cost</CardDescription>
                     <CardTitle class="text-2xl tabular-nums">
                         {{ totals.provider_cost }}
+                    </CardTitle>
+                </CardHeader>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardDescription>Pixelforge reports</CardDescription>
+                    <CardTitle
+                        class="inline-flex items-center gap-1.5 text-2xl tabular-nums"
+                        :class="{
+                            'text-destructive':
+                                totals.matches_provider === false,
+                        }"
+                    >
+                        {{ totals.provider_reported_cost }}
+                        <CircleCheck
+                            v-if="totals.matches_provider === true"
+                            class="size-4 text-green-600"
+                        />
+                        <CircleX
+                            v-else-if="totals.matches_provider === false"
+                            class="size-4"
+                        />
                     </CardTitle>
                 </CardHeader>
             </Card>
@@ -134,10 +219,7 @@ function applyFilters(): void {
                 <CardTitle>Daily</CardTitle>
                 <CardDescription>
                     {{ days.total }} days. Provider cost is checked against
-                    Pixelforge's <code>GET /v1/usage</code>.
-                    <span v-if="provider_error" class="text-destructive">
-                        {{ provider_error }}
-                    </span>
+                    Pixelforge's usage, synced every 10 minutes.
                 </CardDescription>
             </CardHeader>
             <CardContent class="overflow-x-auto">
@@ -184,7 +266,18 @@ function applyFilters(): void {
                             </td>
                             <td class="py-2 pr-4 text-right">
                                 <span
-                                    v-if="day.provider_reported_cost !== null"
+                                    v-if="day.provider_stale"
+                                    class="inline-flex items-center gap-1 text-muted-foreground"
+                                    :title="`Synced ${formatTime(day.provider_synced_at)}; generations finished since then`"
+                                >
+                                    {{ day.provider_reported_cost }}
+                                    <Clock class="size-3.5" />
+                                    <span class="text-xs">pending sync</span>
+                                </span>
+                                <span
+                                    v-else-if="
+                                        day.provider_reported_cost !== null
+                                    "
                                     class="inline-flex items-center gap-1"
                                     :class="
                                         day.matches_provider
@@ -205,7 +298,7 @@ function applyFilters(): void {
                                     <CircleX v-else class="size-3.5" />
                                 </span>
                                 <span v-else class="text-muted-foreground">
-                                    —
+                                    Not synced
                                 </span>
                             </td>
                             <td class="py-2 text-right">{{ day.profit }}</td>

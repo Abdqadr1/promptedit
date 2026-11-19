@@ -21,6 +21,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/report', ReportController::class)
         ->middleware('can:viewAdminReport')
         ->name('admin.report');
+    Route::post('admin/report/sync', [ReportController::class, 'sync'])
+        ->middleware(['can:viewAdminReport', 'throttle:10,1'])
+        ->name('admin.report.sync');
 });
 
 require __DIR__.'/settings.php';

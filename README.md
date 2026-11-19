@@ -48,6 +48,12 @@ To make an existing user an admin, run `php artisan admin:grant you@example.com`
 
 Each day's provider cost is compared with Pixelforge's `GET /v1/usage`, using the same "UTC day completed" rule.
 
+That usage is stored in `provider_usage_days`, so the report can cover any date range and never calls Pixelforge while loading:
+
+- `pixelforge:sync-usage` runs every 10 minutes and refreshes the last 3 UTC days. If a generation finished after a day's last sync, that day shows "pending sync" instead of being compared, so it never shows a false mismatch.
+- `php artisan pixelforge:sync-usage --from=2026-01-01 --to=2026-11-19` backfills any range. It is fetched in 92-day chunks, because that's the most Pixelforge returns per request.
+- When a selected range has days that haven't been synced, the report shows a **Sync from Pixelforge** button.
+
 ## Tests
 
 ```bash
